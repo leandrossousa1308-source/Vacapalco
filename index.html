@@ -105,6 +105,9 @@
   .sl em { font-style: normal; color: var(--fg); font-variant-numeric: tabular-nums; }
   .sl input { width: 100%; height: 24px; margin: 0; accent-color: var(--accent); touch-action: pan-y; }
 
+  .rv { flex: none; align-self: center; min-height: 36px; padding: 0 12px; border: 2px solid var(--line); border-radius: 6px; background: var(--panel-hi); font: 800 11px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .rv[aria-pressed="true"] { border-color: var(--cut); background: var(--cut); color: #fff; }
+
   /* Palco */
   .seg { display: flex; gap: 6px; }
   .seg button { background: var(--panel-hi); border: 2px solid var(--line); border-radius: 6px; padding: 0 14px; font-weight: 600; }
@@ -171,7 +174,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var cv = $('cv'), stage = $('stage');
   var state = { imgs: [], cur: -1, fit: 'contain' };
-  var APP_VERSION = '8';
+  var APP_VERSION = '9';
   $('ver').textContent = 'v' + APP_VERSION;
 
   /* =============== EFEITOS: definição e ajustes =============== */
@@ -181,28 +184,28 @@
     chroma:  { name: 'Cromática',   on: true,  p: { width: P('Largura', 8, 280, 1, 46, 0), amt: P('Intensidade', 0, 4, 0.05, 1, 2), persist: P('Persistência', 0.2, 8, 0.1, 1.2, 1) } },
     haze:    { name: 'Miragem',     on: false, p: { area: P('Área', 0.05, 1.2, 0.01, 0.22, 2), amt: P('Intensidade', 0, 6, 0.05, 1.8, 2), freq: P('Frequência', 6, 120, 1, 26, 0) } },
     fluid:   { name: 'Fluido',      on: false, p: { visc: P('Viscosidade', 0, 1, 0.01, 0.25, 2), turb: P('Turbulência', 0, 120, 1, 6, 0), ret: P('Retorno', 0.3, 20, 0.1, 4, 1) } },
-    marble:  { name: 'Marmorizado', on: false, p: { scale: P('Escala', 0.5, 12, 0.1, 4, 1), flow: P('Fluxo', 0, 6, 0.05, 1.5, 2), persist: P('Persistência', 0.5, 40, 0.5, 8, 1) } },
     melt:    { name: 'Derreter',    on: false, p: { thick: P('Espessura', 0.3, 12, 0.1, 3, 1), speed: P('Velocidade', 0.2, 10, 0.1, 2, 1), reach: P('Alcance', 0.05, 1.2, 0.01, 0.25, 2) } },
     parts:   { name: 'Partículas',  on: false, p: { count: P('Quantidade', 2, 200, 1, 40, 0), size: P('Tamanho', 1, 60, 1, 10, 0), grav: P('Gravidade', -4, 4, 0.05, 0.6, 2) } },
     swarm:   { name: 'Enxame',      on: false, p: { count: P('Quantidade', 2, 200, 1, 30, 0), cohes: P('Coesão', 0, 6, 0.05, 1.2, 2), speed: P('Velocidade', 0.2, 8, 0.1, 1.5, 1) } },
-    color:   { name: 'Colorama',    on: false, p: { pal: P('Paleta', 1, 5, 1, 1, 0, ['Arco-íris', 'Pôr do sol', 'Neon', 'Aurora', 'Fogo']), speed: P('Velocidade', 0, 6, 0.05, 0.6, 2), reach: P('Alcance', 0.05, 5, 0.05, 0.5, 2) } },
-    bloom:   { name: 'Floração',    on: false, p: { size: P('Tamanho', 0.1, 4, 0.05, 0.5, 2), spread: P('Espalhar', 0.1, 6, 0.05, 0.7, 2), mix: P('Mistura', 0, 1, 0.01, 0.85, 2) } },
+    color:   { name: 'Colorama',    on: false, p: { pal: P('Paleta', 1, 7, 1, 3, 0, PAL7), speed: P('Velocidade', 0, 6, 0.05, 0.6, 2), reach: P('Alcance', 0.03, 5, 0.01, 0.16, 2) } },
+    bloom:   { name: 'Floração',    on: false, p: { size: P('Tamanho', 0.1, 4, 0.05, 1.1, 2), spread: P('Espalhar', 0.1, 6, 0.05, 1.2, 2), mix: P('Mistura', 0, 1, 0.01, 1, 2), pal: P('Paleta', 1, 7, 1, 3, 0, PAL7) } },
     echo:    { name: 'Eco',         on: false, p: { amt: P('Quantidade', 0, 1, 0.01, 0.75, 2), dist: P('Distância', 0, 16, 0.1, 3, 1), fade: P('Esmaecer', 0.05, 6, 0.05, 1.5, 2), reach: P('Alcance', 0.1, 4, 0.05, 0.5, 2) } }
   };
+  var PAL7 = ['Fogo', 'Gelo', 'Arco-íris', 'Negativo', 'Roxo-verde', 'Vermelho-verde', 'Azul-amarelo'];
   var sel = 'ripple';
 
   function saveSettings() {
     try {
       var o = {};
-      Object.keys(FX).forEach(function (k) { o[k] = { on: FX[k].on, v: {} }; Object.keys(FX[k].p).forEach(function (n) { o[k].v[n] = FX[k].p[n].v; }); });
-      localStorage.setItem('vp-set-v3', JSON.stringify(o));
+      Object.keys(FX).forEach(function (k) { o[k] = { on: FX[k].on, rv: !!FX[k].rv, v: {} }; Object.keys(FX[k].p).forEach(function (n) { o[k].v[n] = FX[k].p[n].v; }); });
+      o._v = 4; localStorage.setItem('vp-set-v3', JSON.stringify(o));
     } catch (e) {}
   }
   (function loadSettings() {
     try {
       var o = JSON.parse(localStorage.getItem('vp-set-v3') || localStorage.getItem('vp-set-v2') || '{}');
       Object.keys(FX).forEach(function (k) {
-        if (!o[k]) return; FX[k].on = !!o[k].on;
+        if (!o[k] || (o._v !== 4 && (k === 'color' || k === 'bloom'))) return; FX[k].on = !!o[k].on; FX[k].rv = !!o[k].rv;
         Object.keys(FX[k].p).forEach(function (n) { if (typeof o[k].v[n] === 'number') FX[k].p[n].v = o[k].v[n]; });
       });
     } catch (e) {}
@@ -232,6 +235,10 @@
       inp.addEventListener('input', function () { d.v = parseFloat(inp.value); em.textContent = valText(d); saveSettings(); });
       lab.append(sp, inp); box.appendChild(lab);
     });
+    var rv = document.createElement('button'); rv.className = 'rv'; rv.textContent = 'Revelar'; rv.title = 'Esconde o palco: só aparece a imagem onde o efeito age';
+    rv.setAttribute('aria-pressed', FX[sel].rv ? 'true' : 'false');
+    rv.addEventListener('click', function () { FX[sel].rv = !FX[sel].rv; rv.setAttribute('aria-pressed', FX[sel].rv ? 'true' : 'false'); saveSettings(); });
+    box.appendChild(rv);
   }
   renderChips(); renderSliders();
 
@@ -246,16 +253,13 @@
     'void main(){ vec2 c = vUv - uDt * texture(uVel, vUv).xy * uTexel; vec2 m = texture(uMap, c).xy; vec2 id = vec2(vUv.x, 1. - vUv.y);\n' +
     '  o = vec4(mix(m, id, 1. - exp(-uRelax * uDt)), 0., 1.); }';
   var FS_MAPINIT = HDR + 'in vec2 vUv; out vec4 o; void main(){ o = vec4(vUv.x, 1. - vUv.y, 0., 1.); }';
-  var FS_FORCE = HDR + 'in vec2 vUv; out vec4 o; uniform sampler2D uVel; uniform vec4 uFp[4], uFv[4]; uniform vec4 uFluid, uMarble, uMelt; uniform vec2 uAsp; uniform float uTime, uDt;\n' +
+  var FS_FORCE = HDR + 'in vec2 vUv; out vec4 o; uniform sampler2D uVel; uniform vec4 uFp[4], uFv[4]; uniform vec4 uFluid, uMelt; uniform vec2 uAsp; uniform float uTime, uDt;\n' +
     'void main(){\n' +
     '  vec2 v = texture(uVel, vUv).xy;\n' +
     '  for (int k = 0; k < 4; k++) {\n' +
     '    if (uFp[k].z < .5) continue;\n' +
     '    vec2 p = (vUv - uFp[k].xy) * uAsp; float r2 = dot(p, p); float rr = sqrt(r2);\n' +
     '    if (uFluid.x > .5) { float g = exp(-r2 / uFluid.y); v = mix(v, uFv[k].xy * uFluid.z, clamp(g * uFluid.w * uDt, 0., 1.)); }\n' +
-    '    if (uMarble.x > .5) { float g = exp(-r2 / uMarble.y); vec2 td = vec2(-p.y, p.x) / (rr + .02); float an = uTime * .9 + float(k) * 2.1;\n' +
-    '      vec2 nz = vec2(sin(p.y * uMarble.z + an), cos(p.x * uMarble.z - an * 1.3));\n' +
-    '      v += (td * sin(an * .7 + rr * uMarble.z * .5) + nz * .6) * g * uMarble.w * uDt * 40.; }\n' +
     '    if (uMelt.x > .5) { float rm = uMelt.w; float g = (p.y < 0.) ? exp(-(p.x * p.x / rm + p.y * p.y / (rm * 10.))) : exp(-r2 / rm);\n' +
     '      float n = .5 + .5 * sin(vUv.x * uMelt.y * 6.28318 + sin(vUv.x * uMelt.y * 13. + float(k)) * 2.); float gate = smoothstep(.25, .8, n);\n' +
     '      v.y -= g * gate * uMelt.z * uDt * 30.; v.x *= 1. - g * .05; }\n' +
@@ -295,7 +299,7 @@
   var FS_ECHO = HDR + 'in vec2 vUv; out vec4 o; uniform sampler2D uE, uC, uF; uniform vec2 uCen; uniform float uZoom, uDecay;\n' +
     'void main(){ vec2 c = uCen + (vUv - uCen) / uZoom; vec3 e = texture(uE, c).rgb * uDecay; vec3 cur = texture(uC, vUv).rgb * clamp(texture(uF, vUv).b, 0., 1.); o = vec4(max(e, cur), 1.); }';
   var FS_PRESENT = HDR + 'in vec2 vUv; out vec4 o; uniform sampler2D uC, uE; uniform float uAmt;\n' +
-    'void main(){ o = vec4(max(texture(uC, vUv).rgb, texture(uE, vUv).rgb * uAmt), 1.); }';
+    'void main(){ vec4 c = texture(uC, vUv); o = vec4(max(c.rgb * c.a, texture(uE, vUv).rgb * uAmt), 1.); }';
 
   // --- composição final ---
   var FS_COMP = HDR + 'in vec2 vUv; out vec4 o;\n' +
@@ -304,24 +308,29 @@
     'uniform vec4 uR[16]; uniform vec4 uRP;\n' +
     'uniform vec4 uH[12]; uniform vec3 uHP; uniform float uTime;\n' +
     'uniform vec2 uCA; uniform float uOnC;\n' +
-    'uniform vec4 uB[8]; uniform vec3 uBP;\n' +
+    'uniform vec4 uB[8]; uniform vec4 uBP;\n' +
+    'uniform vec4 uRv1, uRv2; uniform float uRvAny, uToC;\n' +
     'uniform vec4 uCol;\n' +
-    'vec3 pal(float idx, float t){ vec3 a = vec3(.5), b = vec3(.5), c = vec3(1.), d = vec3(0., .33, .67);\n' +
-    '  if (idx > 1.5 && idx < 2.5) { d = vec3(0., .10, .20); }\n' +
-    '  else if (idx > 2.5 && idx < 3.5) { c = vec3(1., 1., .5); d = vec3(.8, .9, .3); }\n' +
-    '  else if (idx > 3.5 && idx < 4.5) { c = vec3(1., .7, .4); d = vec3(0., .15, .20); }\n' +
-    '  else if (idx > 4.5) { a = vec3(.8, .5, .4); b = vec3(.2, .4, .2); c = vec3(2., 1., 1.); d = vec3(0., .25, .25); }\n' +
-    '  return a + b * cos(6.28318 * (c * t + d)); }\n' +
+    'vec3 grad3(vec3 a, vec3 b, vec3 c, float u){ return mix(mix(a, b, smoothstep(0., .5, u)), c, smoothstep(.5, 1., u)); }\n' +
+    'vec3 gm(float idx, float u){\n' +
+    '  if (idx < 1.5) return grad3(vec3(.45, 0., 0.), vec3(1., .4, 0.), vec3(1., .9, .2), u);\n' +
+    '  if (idx < 2.5) return grad3(vec3(0., .15, .5), vec3(.3, .8, 1.), vec3(.9, 1., 1.), u);\n' +
+    '  if (idx < 3.5) return .5 + .5 * cos(6.28318 * (u + vec3(0., .33, .67)));\n' +
+    '  if (idx < 4.5) return vec3(1.);\n' +
+    '  if (idx < 5.5) return mix(vec3(.5, 0., .9), vec3(.15, 1., .3), smoothstep(.3, .7, u));\n' +
+    '  if (idx < 6.5) return mix(vec3(1., .05, .1), vec3(.1, 1., .2), smoothstep(.3, .7, u));\n' +
+    '  return mix(vec3(0., .25, 1.), vec3(1., .85, 0.), smoothstep(.3, .7, u)); }\n' +
     'vec3 S(vec2 s){ vec2 iu = (s - uOff) / uSize; float m = step(0., iu.x) * step(iu.x, 1.) * step(0., iu.y) * step(iu.y, 1.); vec4 c = texture(uImg, clamp(iu, 0., 1.)); return c.rgb * c.a * m; }\n' +
+    'float Sa(vec2 s){ vec2 iu = (s - uOff) / uSize; float m = step(0., iu.x) * step(iu.x, 1.) * step(0., iu.y) * step(iu.y, 1.); return texture(uImg, clamp(iu, 0., 1.)).a * m; }\n' +
     'void main(){\n' +
     '  vec2 asp = vec2(uRes.x / uRes.y, 1.); vec2 s = vec2(vUv.x, 1. - vUv.y);\n' +
     '  vec2 base = uUseMap > .5 ? texture(uMap, vUv).xy : s;\n' +
-    '  vec2 disp = vec2(0.); float glow = 0.;\n' +
+    '  vec2 disp = vec2(0.); float glow = 0.; float vRip = 0.;\n' +
     '  for (int i = 0; i < 16; i++) { vec4 r = uR[i]; if (r.w <= 0.) continue;\n' +
     '    vec2 d2 = (s - r.xy) * asp; float d = length(d2); float R = r.z * uRP.z;\n' +
     '    float fade = clamp(1. - R / uRP.y, 0., 1.); fade *= fade;\n' +
     '    float x = (d - R) / uRP.x; float env = exp(-x * x); vec2 dir = normalize(d2 + vec2(1e-5));\n' +
-    '    disp += (dir / asp) * sin(x * 4.7) * env * fade * r.w; glow += env * fade * r.w; }\n' +
+    '    disp += (dir / asp) * sin(x * 4.7) * env * fade * r.w; glow += env * fade * r.w; vRip = max(vRip, clamp(exp(-x * x * .35) * fade * 2.4, 0., 1.)); }\n' +
     '  vec2 uv = base - disp * .06;\n' +
     '  float W = 0.;\n' +
     '  for (int j = 0; j < 12; j++) { vec4 h = uH[j]; if (h.z <= 0.) continue; float dd = length((s - h.xy) * asp); float k = 1. - smoothstep(0., uHP.x, dd); W += k * k * h.z; }\n' +
@@ -335,13 +344,24 @@
     '  vec4 f = texture(uField, vUv);\n' +
     '  col *= 1. - .92 * clamp(f.g, 0., 1.) * uOnHole;\n' +
     '  float lum = dot(col, vec3(.299, .587, .114));\n' +
-    '  if (uCol.x > .5) { float m = smoothstep(.04, .5, f.r); if (m > 0.) { vec3 cc = pal(uCol.y, lum * 1.2 + uCol.z) * clamp(lum * 1.8, 0., 1.); col = mix(col, cc, m); } }\n' +
+    '  float vCo = smoothstep(.15, .9, f.r), vBl = 0.;\n' +
+    '  if (uCol.x > .5 && vCo > 0.) { vec3 cc;\n' +
+    '    if (uCol.y > 3.5 && uCol.y < 4.5) cc = (1. - col) * Sa(uv);\n' +
+    '    else cc = gm(uCol.y, .5 + .5 * sin(6.28318 * (lum * .7 + uCol.z))) * clamp(lum * 1.8, 0., 1.);\n' +
+    '    col = mix(col, cc, vCo); }\n' +
     '  for (int k = 0; k < 8; k++) { vec4 b = uB[k]; if (b.z < 0.) continue;\n' +
     '    vec2 dv = (s - b.xy) * asp; float d = length(dv); float R = b.z * uBP.y; float an = atan(dv.y, dv.x);\n' +
     '    float edge = max(R, .001) * (1. + .18 * sin(an * 3. + b.w * 30.) + .12 * sin(an * 7. - b.w * 17. + b.z * 1.5));\n' +
-    '    float m = (1. - smoothstep(edge * .55, edge, d)) * clamp(1. - R / uBP.x, 0., 1.) * uBP.z;\n' +
-    '    if (m > 0.) { float l2 = dot(col, vec3(.299, .587, .114)); vec3 tint = pal(1., b.w + d / max(edge, .01) * .35) * clamp(l2 * 1.8, 0., 1.); col = mix(col, tint, m); } }\n' +
-    '  o = vec4(col, 1.);\n' +
+    '    float mb = (1. - smoothstep(edge * .55, edge, d)) * pow(clamp(1. - R / uBP.x, 0., 1.), .6); vBl = max(vBl, mb);\n' +
+    '    float m = mb * uBP.z;\n' +
+    '    if (m > 0.) { float l2 = dot(col, vec3(.299, .587, .114)); vec3 tint;\n' +
+    '      if (uBP.w > 3.5 && uBP.w < 4.5) tint = (1. - col) * Sa(uv);\n' +
+    '      else tint = gm(uBP.w, .5 + .5 * sin(6.28318 * (b.w + d / max(edge, .01) * .5))) * clamp(l2 * 2.5, 0., 1.);\n' +
+    '      col = mix(col, tint, m); } }\n' +
+    '  float vFl = uUseMap > .5 ? smoothstep(.004, .04, length(base - s)) : 0.;\n' +
+    '  float vis = 1.;\n' +
+    '  if (uRvAny > .5) { vis = max(max(uRv1.x * vRip, uRv1.y * ca), max(uRv1.z * clamp(W * 1.6, 0., 1.), uRv1.w * vFl)); vis = max(vis, max(uRv2.x * vFl, max(uRv2.y * vCo, uRv2.z * vBl))); }\n' +
+    '  o = uToC > .5 ? vec4(col, vis) : vec4(col * vis, 1.);\n' +
     '}';
 
   // --- partículas ---
@@ -466,11 +486,11 @@
       var P1 = function (fs, n) { var p = mkProg(VS_FULL, fs, n); var l = gl.getAttribLocation(p.p, 'a'); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 0, 0); return p; };
       G.vao = vao;
       G.adv = P1(FS_ADV, 'uVel uSrc uTexel uDt uDiss'); G.mapadv = P1(FS_MAPADV, 'uVel uMap uTexel uDt uRelax'); G.mapinit = P1(FS_MAPINIT, '');
-      G.force = P1(FS_FORCE, 'uVel uFp uFv uFluid uMarble uMelt uAsp uTime uDt'); G.curl = P1(FS_CURL, 'uVel uTexel'); G.vort = P1(FS_VORT, 'uVel uCurl uTexel uK uDt');
+      G.force = P1(FS_FORCE, 'uVel uFp uFv uFluid uMelt uAsp uTime uDt'); G.curl = P1(FS_CURL, 'uVel uTexel'); G.vort = P1(FS_VORT, 'uVel uCurl uTexel uK uDt');
       G.div = P1(FS_DIV, 'uVel uTexel'); G.pres = P1(FS_PRES, 'uP uDiv uTexel'); G.grad = P1(FS_GRAD, 'uP uVel uTexel'); G.scale = P1(FS_SCALE, 'uT uK');
       G.trail = P1(FS_TRAIL, 'uTr uS0 uS1 uCol uAsp uDecay uR'); G.field = P1(FS_FIELD, 'uF uFp uDec uGain uRad uAsp');
       G.echo = P1(FS_ECHO, 'uE uC uF uCen uZoom uDecay'); G.present = P1(FS_PRESENT, 'uC uE uAmt');
-      G.comp = P1(FS_COMP, 'uImg uMap uTrail uField uRes uOff uSize uUseMap uOnHole uR uRP uH uHP uTime uCA uOnC uB uBP uCol');
+      G.comp = P1(FS_COMP, 'uImg uMap uTrail uField uRes uOff uSize uUseMap uOnHole uR uRP uH uHP uTime uCA uOnC uB uBP uCol uRv1 uRv2 uRvAny uToC');
       G.pupd = P1(FS_PUPD, 'uA uB uN uTot uDt uTime uMode uAspect uSp uSv uP');
       G.pdraw = mkProg(VS_PDRAW, FS_PDRAW, 'uA uB uImg uN uPx uOff uSize');
       maxPoint = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1] || 64;
@@ -571,8 +591,8 @@
     var texV = [1 / simW, 1 / simH];
 
     // ---------- fluido / marmorizado / derreter (um motor só) ----------
-    var Ff = FX.fluid, Fm = FX.marble, Fl = FX.melt, simOn = Ff.on || Fm.on || Fl.on;
-    var tau = 0.3; if (Ff.on) tau = Math.max(tau, Ff.p.ret.v); if (Fm.on) tau = Math.max(tau, Fm.p.persist.v); if (Fl.on) tau = Math.max(tau, 3); if (!simOn) tau = Math.max(tau, 2);
+    var Ff = FX.fluid, Fl = FX.melt, simOn = Ff.on || Fl.on;
+    var tau = 0.3; if (Ff.on) tau = Math.max(tau, Ff.p.ret.v); if (Fl.on) tau = Math.max(tau, 3); if (!simOn) tau = Math.max(tau, 2);
     if (simOn && nf) simUntil = Math.max(simUntil, t + tau * 3 + 0.5);
     var simRun = (simOn && nf > 0) || t < simUntil;
     if (simRun) {
@@ -582,11 +602,10 @@
       run(G.force, RT.vel.w, function (u) {
         tx(0, RT.vel.r.t, u.uVel); gl.uniform4fv(u.uFp, fa[0]); gl.uniform4fv(u.uFv, fa[1]); gl.uniform2f(u.uAsp, asp, 1); gl.uniform1f(u.uTime, t % 600); gl.uniform1f(u.uDt, dt);
         gl.uniform4f(u.uFluid, Ff.on ? 1 : 0, 0.012, 1.25, 14);
-        gl.uniform4f(u.uMarble, Fm.on ? 1 : 0, 0.02, Fm.p.scale.v * 3, Fm.p.flow.v);
         gl.uniform4f(u.uMelt, Fl.on ? 1 : 0, 40 / Fl.p.thick.v, Fl.p.speed.v, Fl.p.reach.v * Fl.p.reach.v * 0.4);
       }); RT.vel.swap();
       run(G.curl, RT.curl, function (u) { tx(0, RT.vel.r.t, u.uVel); gl.uniform2f(u.uTexel, texV[0], texV[1]); });
-      var turb = Ff.on ? Ff.p.turb.v : (Fm.on ? 8 : 3);
+      var turb = Ff.on ? Ff.p.turb.v : 3;
       run(G.vort, RT.vel.w, function (u) { tx(0, RT.vel.r.t, u.uVel); tx(1, RT.curl.t, u.uCurl); gl.uniform2f(u.uTexel, texV[0], texV[1]); gl.uniform1f(u.uK, turb); gl.uniform1f(u.uDt, dt); }); RT.vel.swap();
       run(G.div, RT.div, function (u) { tx(0, RT.vel.r.t, u.uVel); gl.uniform2f(u.uTexel, texV[0], texV[1]); });
       run(G.scale, RT.pres.w, function (u) { tx(0, RT.pres.r.t, u.uT); gl.uniform1f(u.uK, 0.8); }); RT.pres.swap();
@@ -614,7 +633,7 @@
       run(G.field, RT.field.w, function (u) {
         tx(0, RT.field.r.t, u.uF); gl.uniform4fv(u.uFp, fa2[0]); gl.uniform2f(u.uAsp, asp, 1);
         gl.uniform3f(u.uDec, Math.exp(-dt / 1.8), Math.exp(-dt / 1.4), Math.exp(-dt / 0.5));
-        gl.uniform3f(u.uGain, Co.on ? 0.2 : 0, holeOn * 0.12, Ec.on ? 0.5 : 0);
+        gl.uniform3f(u.uGain, Co.on ? 0.12 : 0, holeOn * 0.12, Ec.on ? 0.5 : 0);
         gl.uniform3f(u.uRad, Math.pow(Co.p.reach.v, 2) * 0.5 + 1e-4, 0.012, Math.pow(Ec.p.reach.v, 2) * 0.5 + 1e-4);
       }); RT.field.swap(); G.fieldLive = true;
     } else if (G.fieldLive) { G.fieldLive = false; clearPair(RT.field); }
@@ -656,7 +675,10 @@
       gl.uniform4fv(u.uR, rArr); gl.uniform4f(u.uRP, Pr.size.v, Pr.range.v, Pr.speed.v, 0);
       gl.uniform4fv(u.uH, hArr); gl.uniform3f(u.uHP, FX.haze.p.area.v, FX.haze.p.amt.v, FX.haze.p.freq.v); gl.uniform1f(u.uTime, now / 1000 % 600);
       gl.uniform2f(u.uCA, Cc.p.amt.v, 0); gl.uniform1f(u.uOnC, trailLive ? 1 : 0);
-      gl.uniform4fv(u.uB, bArr); gl.uniform3f(u.uBP, Pb.size.v, Pb.spread.v, Pb.mix.v);
+      gl.uniform4fv(u.uB, bArr); gl.uniform4f(u.uBP, Pb.size.v, Pb.spread.v, Pb.mix.v, Pb.pal.v);
+      var rvOn = function (k) { return FX[k].on && FX[k].rv ? 1 : 0; };
+      gl.uniform4f(u.uRv1, rvOn('ripple'), rvOn('chroma'), rvOn('haze'), rvOn('fluid')); gl.uniform4f(u.uRv2, rvOn('melt'), rvOn('color'), rvOn('bloom'), 0);
+      gl.uniform1f(u.uRvAny, (rvOn('ripple') + rvOn('chroma') + rvOn('haze') + rvOn('fluid') + rvOn('melt') + rvOn('color') + rvOn('bloom') + rvOn('parts') + rvOn('swarm') + rvOn('echo')) > 0 ? 1 : 0); gl.uniform1f(u.uToC, Ech ? 1 : 0);
       gl.uniform4f(u.uCol, Co.on ? 1 : 0, Co.p.pal.v, colT, 0);
     });
     if (Ech) {
