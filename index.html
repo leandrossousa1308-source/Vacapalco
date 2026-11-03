@@ -266,7 +266,8 @@
     '    vec2 sh = vec2(1., .45) * uCA.x * 0.025 * a;',
     '    vec3 ab = vec3(S(uv + sh).r, base.g, S(uv - sh).b);',
     '    vec3 tc = t.rgb / max(t.a, .001);',
-    '    vec3 tinted = ab * (0.3 + 1.5 * tc) + tc * 0.06;',
+    '    tc = tc / max(max(tc.r, max(tc.g, tc.b)), .001);',
+    '    vec3 tinted = ab * mix(vec3(1.), tc, .6);',
     '    col = mix(base, tinted, a);',
     '  }',
     '  col += base * glow * 0.6;',
@@ -331,7 +332,7 @@
   function rippleAmp(f) { return FX.ripple.p.press.v * (f.pen ? 0.4 + f.press * 1.2 : 1); }
   function stroke(f, x0, y0, x1, y1) {
     var c = COLORS[f.i % 4], w = FX.chroma.p.width.v * 0.5 * (f.pen ? 0.5 + f.press : 1), col = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',0.7)';
-    tctx.save(); tctx.globalCompositeOperation = 'lighter';
+    tctx.save(); tctx.globalCompositeOperation = 'source-over';
     tctx.strokeStyle = col; tctx.shadowColor = col; tctx.shadowBlur = w * 0.7; tctx.lineWidth = w; tctx.lineCap = 'round';
     tctx.beginPath(); tctx.moveTo(x0 * tcv.width, y0 * tcv.height); tctx.lineTo(x1 * tcv.width, y1 * tcv.height); tctx.stroke(); tctx.restore();
     lastStroke = nowS();
@@ -490,7 +491,7 @@
   });
 
   /* =============== Sistema =============== */
-  var APP_VERSION = '3';
+  var APP_VERSION = '4';
   $('ver').textContent = 'v' + APP_VERSION;
   $('updBtn').addEventListener('click', function () {
     var sm = $('updSm'); sm.textContent = 'atualizando…';
