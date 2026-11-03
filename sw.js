@@ -1,5 +1,5 @@
 // Com internet: sempre busca a versão nova (e guarda cópia). Sem internet: usa a cópia guardada.
-const V = 'vaca-palco-v4';
+const V = 'vaca-palco-v5';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'fonts.css', 'fonts/f1.woff2', 'fonts/f2.woff2', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
