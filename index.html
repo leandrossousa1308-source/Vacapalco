@@ -114,7 +114,7 @@
   .corner { position: fixed; left: 0; bottom: 0; width: 72px; height: 72px; z-index: 5; display: none; }
   body.live .corner { display: block; }
   @media (prefers-reduced-motion: no-preference) { .tab, .thumb, .chip { transition: border-color .12s, background .12s; } }
-  @media (max-width: 900px) { .cut-note { display: none; } .sliders { gap: 8px; } .chip .nm { padding: 0 8px; } }
+  @media (max-width: 900px) { .cut-note { display: none; } .go small { display: none; } .sliders { gap: 8px; } .chip .nm { padding: 0 8px; } }
 </style>
 </head>
 <body>
@@ -133,7 +133,7 @@
       <button class="tab" role="tab" id="t-load" aria-selected="true" data-tab="load">Carregar</button>
       <button class="tab" role="tab" id="t-fx" aria-selected="false" data-tab="fx">Efeitos</button>
       <button class="tab" role="tab" id="t-set" aria-selected="false" data-tab="set">Palco</button>
-      <span class="cut-note">corte aqui no Resolume ↑</span>
+      <span class="cut-note"><span id="ver"></span> · corte aqui no Resolume ↑</span>
     </div>
 
     <div class="inner body">
@@ -154,6 +154,7 @@
           <button data-fit="fill" aria-pressed="false">Esticar</button>
         </div>
         <button class="go" id="clearBtn">Apagar salvos<small>remove as imagens do app</small></button>
+        <button class="go" id="updBtn">Atualizar app<small id="updSm">precisa de internet</small></button>
         <button class="go live" id="liveBtn">Modo Palco<small>esconde a faixa · 3 toques no canto inferior esquerdo volta</small></button>
       </section>
     </div>
@@ -489,12 +490,22 @@
   });
 
   /* =============== Sistema =============== */
+  var APP_VERSION = '3';
+  $('ver').textContent = 'v' + APP_VERSION;
+  $('updBtn').addEventListener('click', function () {
+    var sm = $('updSm'); sm.textContent = 'atualizando…';
+    var go = function () { location.reload(); };
+    var jobs = [];
+    try { if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) {}
+    try { if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })); } catch (e) {}
+    Promise.all(jobs).then(go, go);
+  });
   function keepAwake() { try { if (navigator.wakeLock && document.visibilityState === 'visible') navigator.wakeLock.request('screen').catch(function () {}); } catch (e) {} }
   document.addEventListener('visibilitychange', keepAwake); document.addEventListener('click', keepAwake, { once: true }); keepAwake();
   document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
   if ('serviceWorker' in navigator) {
     var hadCtl = !!navigator.serviceWorker.controller, reloaded = false;
-    navigator.serviceWorker.register('sw.js').catch(function () {});
+    navigator.serviceWorker.register('sw.js').then(function (r) { r.update(); }).catch(function () {});
     navigator.serviceWorker.addEventListener('controllerchange', function () { if (hadCtl && !reloaded) { reloaded = true; location.reload(); } });
   }
 
