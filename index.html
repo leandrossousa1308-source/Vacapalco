@@ -529,7 +529,7 @@
   });
 
   /* =============== Sistema =============== */
-  var APP_VERSION = '5';
+  var APP_VERSION = '6';
   $('ver').textContent = 'v' + APP_VERSION;
   $('updBtn').addEventListener('click', function () {
     var sm = $('updSm'); sm.textContent = 'atualizando…';
@@ -544,8 +544,19 @@
   document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
   if ('serviceWorker' in navigator) {
     var hadCtl = !!navigator.serviceWorker.controller, reloaded = false;
-    navigator.serviceWorker.register('sw.js').then(function (r) { r.update(); }).catch(function () {});
-    navigator.serviceWorker.addEventListener('controllerchange', function () { if (hadCtl && !reloaded) { reloaded = true; location.reload(); } });
+    var swReg = null;
+    navigator.serviceWorker.register('sw.js').then(function (r) { swReg = r; r.update(); }).catch(function () {});
+    // procura versão nova sempre que o app volta para a tela (precisa de internet; sem internet não faz nada)
+    var checkUpdate = function () { if (swReg && navigator.onLine) swReg.update().catch(function () {}); };
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') checkUpdate(); });
+    window.addEventListener('online', checkUpdate);
+    setInterval(checkUpdate, 5 * 60 * 1000);
+    // recarrega quando a versão nova assume, mas nunca no meio do show (modo palco ou dedo na tela)
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadCtl || reloaded) return; reloaded = true;
+      var tryReload = function () { if (document.body.classList.contains('live') || Object.keys(fingers).length) return setTimeout(tryReload, 3000); location.reload(); };
+      tryReload();
+    });
   }
 
   size();
