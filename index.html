@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VACA Palco">
+<meta name="theme-color" content="#07060a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="fonts.css">
+<title>VACA Palco</title>
+<style>
+  /* Layout: palco preto em cima (vai pro Resolume), faixa de controles colada embaixo (você corta no Resolume). */
+  :root {
+    --bg: #07060a;          /* palco / fundo */
+    --panel: #121019;       /* faixa de controles */
+    --panel-hi: #1c1827;    /* botões */
+    --line: #2b2540;        /* divisórias */
+    --fg: #f1eefb;
+    --muted: #8d86a8;
+    --accent: #c6ff3d;      /* ácido, só pra estado ativo */
+    --cut: #ff3d8b;         /* linha de corte */
+    --display: "Syne", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --strip-h: 168px;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font: 14px/1.4 var(--mono);
+    margin: 0; overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none; touch-action: manipulation;
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .app { height: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+
+  /* PALCO */
+  .stage { position: relative; background: #000; min-height: 0; }
+  #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .empty {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px;
+    color: var(--muted); pointer-events: none; padding: 16px;
+  }
+  .empty b { font: 800 clamp(22px, 4vw, 40px)/1 var(--display); color: var(--fg); letter-spacing: -.01em; }
+  .empty span { font-size: 13px; letter-spacing: .04em; }
+
+  /* FAIXA DE CONTROLES */
+  .strip { background: var(--panel); height: var(--strip-h); position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+  .strip::before { /* linha de corte */
+    content: ""; position: absolute; left: 0; right: 0; top: 0; border-top: 2px dashed var(--cut);
+  }
+  .inner { padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+  .tabs { display: flex; gap: 6px; align-items: center; padding-block: 12px 8px; }
+  .tab {
+    font: 800 13px/1 var(--display); letter-spacing: .12em; text-transform: uppercase;
+    padding: 11px 16px; border-radius: 6px; color: var(--muted); min-height: 40px;
+  }
+  .tab[aria-selected="true"] { color: var(--bg); background: var(--accent); }
+  .cut-note { margin-left: auto; font-size: 11px; letter-spacing: .06em; color: var(--cut); text-transform: uppercase; }
+
+  .empty[hidden] { display: none; }
+  .strip > .inner:last-child { display: flex; min-height: 0; }
+  .panel { display: none; min-height: 0; padding-bottom: 12px; flex: 1; min-width: 0; }
+  .panel.on { display: flex; gap: 10px; align-items: stretch; }
+
+  /* Carregar */
+  .big {
+    flex: none; display: grid; place-content: center; gap: 2px; padding: 0 22px; min-width: 190px;
+    background: var(--fg); color: var(--bg); border-radius: 8px; text-align: left;
+  }
+  .big b { font: 800 18px/1.1 var(--display); }
+  .big small { font-size: 11px; color: #4a4560; }
+  .thumbs { display: flex; gap: 8px; overflow-x: auto; flex: 1; min-width: 0; align-items: stretch; scrollbar-width: none; }
+  .thumbs::-webkit-scrollbar { display: none; }
+  .thumb {
+    flex: none; width: 108px; position: relative; border-radius: 6px; overflow: hidden;
+    background: #000 repeating-conic-gradient(#14111d 0 25%, #0b0910 0 50%) 0 0 / 14px 14px; border: 2px solid var(--line);
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+  .thumb span {
+    position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; padding: 3px 6px; background: rgba(7,6,10,.82);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .thumb[aria-pressed="true"] { border-color: var(--accent); }
+  .hint { color: var(--muted); align-self: center; font-size: 12px; line-height: 1.5; }
+  .hint b { color: var(--fg); font-weight: 600; }
+
+  /* Efeitos */
+  .pads { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-columns: minmax(132px, 1fr); gap: 8px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .pads::-webkit-scrollbar { display: none; }
+  .pad {
+    background: var(--panel-hi); border: 2px solid var(--line); border-radius: 8px; text-align: left;
+    padding: 0 12px; font: 800 14px/1.1 var(--display); display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .pad i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); flex: none; }
+  .pad[aria-pressed="true"] { border-color: var(--accent); }
+  .pad[aria-pressed="true"] i { background: var(--accent); }
+  .soon { flex: none; align-self: center; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 10px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+
+  /* Palco (ajustes) */
+  .group { display: grid; gap: 6px; align-content: center; }
+  .group > label { font-size: 10px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+  .seg { display: flex; gap: 6px; }
+  .seg button { background: var(--panel-hi); border: 2px solid var(--line); border-radius: 6px; padding: 0 14px; min-height: 44px; font-weight: 600; }
+  .seg button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .go { margin-left: auto; align-self: stretch; background: var(--cut); color: #fff; border-radius: 8px; padding: 0 22px; font: 800 16px/1.1 var(--display); text-align: left; }
+  .go small { display: block; font: 400 11px/1.3 var(--mono); opacity: .9; margin-top: 2px; }
+
+  /* modo palco: some a faixa. Triplo toque no canto inferior esquerdo traz de volta */
+  body.live .strip { display: none; }
+  .corner { position: fixed; left: 0; bottom: 0; width: 72px; height: 72px; z-index: 5; display: none; }
+  body.live .corner { display: block; }
+  @media (prefers-reduced-motion: no-preference) { .tab, .pad, .thumb { transition: border-color .12s, background .12s; } }
+  [hidden] { display: none !important; }
+  html { background: var(--bg); overscroll-behavior: none; }
+  .strip { box-sizing: border-box; height: calc(var(--strip-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .go.alt { background: var(--panel-hi); border: 2px solid var(--line); color: var(--fg); margin-left: 0; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <main class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="empty" id="empty">
+      <b>Palco vazio</b>
+      <span>Toque em CARREGAR e escolha um PNG da pasta iPad no Drive</span>
+    </div>
+  </main>
+
+  <footer class="strip" id="strip">
+    <div class="inner tabs" role="tablist">
+      <button class="tab" role="tab" id="t-load" aria-selected="true" data-tab="load">Carregar</button>
+      <button class="tab" role="tab" id="t-fx" aria-selected="false" data-tab="fx">Efeitos</button>
+      <button class="tab" role="tab" id="t-set" aria-selected="false" data-tab="set">Palco</button>
+      <span class="cut-note">corte aqui no Resolume ↑</span>
+    </div>
+
+    <div class="inner">
+      <section class="panel on" id="p-load" role="tabpanel" aria-labelledby="t-load">
+        <button class="big" id="openBtn"><b>Abrir pasta</b><small>Drive › iPad</small></button>
+        <div class="thumbs" id="thumbs"></div>
+        <p class="hint" id="hint">Selecione <b>vários PNGs</b> de uma vez.<br>Eles aparecem aqui para trocar com um toque.</p>
+      </section>
+
+      <section class="panel" id="p-fx" role="tabpanel" aria-labelledby="t-fx">
+        <div class="pads" id="pads"></div>
+        <span class="soon">fase 2</span>
+      </section>
+
+      <section class="panel" id="p-set" role="tabpanel" aria-labelledby="t-set">
+        <div class="group">
+          <label>Ajuste da imagem</label>
+          <div class="seg" id="fitSeg">
+            <button data-fit="contain" aria-pressed="true">Caber</button>
+            <button data-fit="cover" aria-pressed="false">Preencher</button>
+            <button data-fit="fill" aria-pressed="false">Esticar</button>
+          </div>
+        </div>
+        <button class="go alt" id="clearBtn">Apagar salvos<small>remove as imagens guardadas no app</small></button>
+        <button class="go" id="liveBtn">Modo Palco<small>esconde a faixa · 3 toques no canto inferior esquerdo volta</small></button>
+      </section>
+    </div>
+  </footer>
+</div>
+<button class="corner" id="corner" aria-label="Mostrar controles"></button>
+<input type="file" id="file" accept="image/png,image/*" multiple hidden>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var cv = $('cv'), ctx = cv.getContext('2d');
+  var state = { imgs: [], cur: -1, fit: 'contain' };
+
+  /* ---- desenho do palco ---- */
+  function size() {
+    var r = cv.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.max(1, Math.round(r.width * d));
+    cv.height = Math.max(1, Math.round(r.height * d));
+    draw();
+  }
+  function draw() {
+    var W = cv.width, H = cv.height;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    var it = state.imgs[state.cur];
+    if (!it) return;
+    var iw = it.img.naturalWidth, ih = it.img.naturalHeight, x = 0, y = 0, w = W, h = H;
+    if (state.fit !== 'fill') {
+      var s = state.fit === 'cover' ? Math.max(W / iw, H / ih) : Math.min(W / iw, H / ih);
+      w = iw * s; h = ih * s; x = (W - w) / 2; y = (H - h) / 2;
+    }
+    ctx.drawImage(it.img, x, y, w, h);
+  }
+  window.addEventListener('resize', size);
+  window.addEventListener('orientationchange', function () { setTimeout(size, 150); });
+
+  /* ---- carregar arquivos ---- */
+  var fileEl = $('file');
+  $('openBtn').addEventListener('click', function () { fileEl.click(); });
+  fileEl.addEventListener('change', function () { addFiles(fileEl.files); fileEl.value = ''; });
+  ['dragover', 'drop'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      e.preventDefault();
+      if (ev === 'drop' && e.dataTransfer) addFiles(e.dataTransfer.files);
+    });
+  });
+
+  /* ---- imagens ficam salvas no iPad (IndexedDB), então funcionam offline ---- */
+  var DB = null;
+  function openDB() {
+    return new Promise(function (res) {
+      try {
+        var r = indexedDB.open('vaca-palco', 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore('imgs', { keyPath: 'name' }); };
+        r.onsuccess = function () { res(r.result); };
+        r.onerror = function () { res(null); };
+      } catch (e) { res(null); }
+    });
+  }
+  function saveBlob(f) {
+    if (!DB) return;
+    try { DB.transaction('imgs', 'readwrite').objectStore('imgs').put({ name: f.name, blob: f }); } catch (e) {}
+  }
+  function loadSaved() {
+    if (!DB) return;
+    try {
+      var rq = DB.transaction('imgs').objectStore('imgs').getAll();
+      rq.onsuccess = function () {
+        var blobs = rq.result.map(function (r) { return new File([r.blob], r.name, { type: r.blob.type || 'image/png' }); });
+        addFiles(blobs, true);
+      };
+    } catch (e) {}
+  }
+
+  function addFiles(list, restored) {
+    var files = Array.prototype.slice.call(list || []).filter(function (f) { return /^image\//.test(f.type) || /\.png$/i.test(f.name); });
+    files.sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true }); });
+    var pending = files.length, firstName = files.length ? files[0].name : null;
+    if (!pending) return;
+    var done = function () {
+      if (--pending > 0) return;
+      state.imgs.sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true }); });
+      renderThumbs();
+      var i = state.imgs.findIndex(function (x) { return x.name === firstName; });
+      select(restored && state.cur >= 0 ? state.cur : Math.max(i, 0));
+    };
+    files.forEach(function (f) {
+      var url = URL.createObjectURL(f), img = new Image();
+      img.onload = function () {
+        var dup = state.imgs.findIndex(function (x) { return x.name === f.name; });
+        if (dup >= 0) { URL.revokeObjectURL(state.imgs[dup].url); state.imgs.splice(dup, 1); }
+        state.imgs.push({ name: f.name, url: url, img: img });
+        if (!restored) saveBlob(f);
+        done();
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); done(); };
+      img.src = url;
+    });
+  }
+
+  function renderThumbs() {
+    var box = $('thumbs'); box.textContent = '';
+    state.imgs.forEach(function (it, i) {
+      var b = document.createElement('button');
+      b.className = 'thumb'; b.setAttribute('aria-pressed', i === state.cur ? 'true' : 'false');
+      var im = document.createElement('img'); im.src = it.url; im.alt = '';
+      var sp = document.createElement('span'); sp.textContent = it.name;
+      b.append(im, sp);
+      b.addEventListener('click', function () { select(i); });
+      box.appendChild(b);
+    });
+    $('hint').hidden = state.imgs.length > 0;
+  }
+  function select(i) {
+    if (i < 0 || i >= state.imgs.length) return;
+    state.cur = i;
+    var t = $('thumbs').children;
+    for (var k = 0; k < t.length; k++) t[k].setAttribute('aria-pressed', k === i ? 'true' : 'false');
+    if (t[i] && t[i].scrollIntoView) t[i].scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    $('empty').hidden = true;
+    draw();
+  }
+
+  /* ---- abas ---- */
+  var tabs = document.querySelectorAll('.tab');
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      tabs.forEach(function (o) { o.setAttribute('aria-selected', o === t ? 'true' : 'false'); });
+      ['load', 'fx', 'set'].forEach(function (n) { $('p-' + n).classList.toggle('on', n === t.dataset.tab); });
+    });
+  });
+
+  /* ---- pads de efeito (fase 1: só layout e estado ligado/desligado) ---- */
+  var FX = ['Caleidoscópio', 'Glitch RGB', 'Ondas', 'Cor ácida', 'Espelho', 'Strobe', 'Zoom pulso', 'Pixelar'];
+  FX.forEach(function (name) {
+    var b = document.createElement('button');
+    b.className = 'pad'; b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = '<span></span><i></i>'; b.firstChild.textContent = name;
+    b.addEventListener('click', function () { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); });
+    $('pads').appendChild(b);
+  });
+
+  /* ---- ajuste ---- */
+  document.querySelectorAll('#fitSeg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.fit = b.dataset.fit;
+      document.querySelectorAll('#fitSeg button').forEach(function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+      draw();
+    });
+  });
+
+  /* ---- modo palco ---- */
+  $('liveBtn').addEventListener('click', function () { document.body.classList.add('live'); setTimeout(size, 30); });
+  var taps = [];
+  $('corner').addEventListener('click', function () {
+    var n = Date.now(); taps = taps.filter(function (t) { return n - t < 900; }); taps.push(n);
+    if (taps.length >= 3) { taps = []; document.body.classList.remove('live'); setTimeout(size, 30); }
+  });
+
+  /* ---- apagar salvos (confirma com segundo toque) ---- */
+  var armed = null;
+  $('clearBtn').addEventListener('click', function () {
+    var btn = $('clearBtn');
+    if (!armed) {
+      btn.firstChild.nodeValue = 'Toque de novo'; armed = setTimeout(function () { armed = null; btn.firstChild.nodeValue = 'Apagar salvos'; }, 3000);
+      return;
+    }
+    clearTimeout(armed); armed = null; btn.firstChild.nodeValue = 'Apagar salvos';
+    try { if (DB) DB.transaction('imgs', 'readwrite').objectStore('imgs').clear(); } catch (e) {}
+    state.imgs.forEach(function (x) { URL.revokeObjectURL(x.url); });
+    state.imgs = []; state.cur = -1; renderThumbs(); $('empty').hidden = false; draw();
+  });
+
+  /* ---- tela não apaga enquanto o app está aberto ---- */
+  function keepAwake() {
+    try { if (navigator.wakeLock && document.visibilityState === 'visible') navigator.wakeLock.request('screen').catch(function () {}); } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', keepAwake);
+  document.addEventListener('click', keepAwake, { once: true });
+  keepAwake();
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+
+  /* ---- offline ---- */
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(function () {}); }
+
+  size();
+  openDB().then(function (d) { DB = d; loadSaved(); });
+})();
+</script>
+</body>
+</html>
